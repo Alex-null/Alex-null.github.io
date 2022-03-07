@@ -1,0 +1,301 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>容器安全事件排查与响应 | Alex-null's Blog</title><meta name="author" content="Alex-null"><meta name="copyright" content="Alex-null"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="声明​本文为笔者对实际容器安全事件的归纳，仅代表个人观点。本文内容不完全适用于K8S环境，因为在K8S场景下，如果入侵者成功入侵一个Pod，情况比较复杂。​ 引子​ 定位初始入侵位置首先要确认入侵是否发生在容器内，或者说只在容器内​ 场景：zabbix告警一个进程占用非常高，像是挖矿程序&#x2F;DOS了​ 但是查看进程的PPID却发现是systemd，这种情况大概率是容器相关了​ 首先获取程序">
+<meta property="og:type" content="article">
+<meta property="og:title" content="容器安全事件排查与响应">
+<meta property="og:url" content="http://example.com/2022/03/07/%E5%AE%B9%E5%99%A8%E5%AE%89%E5%85%A8%E4%BA%8B%E4%BB%B6%E6%8E%92%E6%9F%A5%E4%B8%8E%E5%93%8D%E5%BA%94/index.html">
+<meta property="og:site_name" content="Alex-null&#39;s Blog">
+<meta property="og:description" content="声明​本文为笔者对实际容器安全事件的归纳，仅代表个人观点。本文内容不完全适用于K8S环境，因为在K8S场景下，如果入侵者成功入侵一个Pod，情况比较复杂。​ 引子​ 定位初始入侵位置首先要确认入侵是否发生在容器内，或者说只在容器内​ 场景：zabbix告警一个进程占用非常高，像是挖矿程序&#x2F;DOS了​ 但是查看进程的PPID却发现是systemd，这种情况大概率是容器相关了​ 首先获取程序">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+<meta property="article:published_time" content="2022-03-07T08:18:48.000Z">
+<meta property="article:modified_time" content="2022-03-07T10:12:05.093Z">
+<meta property="article:author" content="Alex-null">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2022/03/07/%E5%AE%B9%E5%99%A8%E5%AE%89%E5%85%A8%E4%BA%8B%E4%BB%B6%E6%8E%92%E6%9F%A5%E4%B8%8E%E5%93%8D%E5%BA%94/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: {"limitDay":500,"position":"top","messagePrev":"It has been","messageNext":"days since the last update, the content of the article may be outdated."},
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '容器安全事件排查与响应',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2022-03-07 18:12:05'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><meta name="generator" content="Hexo 6.0.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://i.loli.net/2021/02/24/5O1day2nriDzjSu.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data is-center"><div class="data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">1</div></a></div><div class="data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a></div><div class="data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div></div><hr/></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7')"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Alex-null's Blog</a></span><div id="menus"><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">容器安全事件排查与响应</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2022-03-07T08:18:48.000Z" title="发表于 2022-03-07 16:18:48">2022-03-07</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2022-03-07T10:12:05.093Z" title="更新于 2022-03-07 18:12:05">2022-03-07</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/">云原生</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">3.6k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>14分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="容器安全事件排查与响应"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="声明​"><a href="#声明​" class="headerlink" title="声明​"></a>声明​</h1><p>本文为笔者对实际容器安全事件的归纳，仅代表个人观点。<br />本文内容不完全适用于K8S环境，因为在K8S场景下，如果入侵者成功入侵一个Pod，情况比较复杂。<br />​<br /></p>
+<h1 id="引子"><a href="#引子" class="headerlink" title="引子"></a>引子</h1><p>​<br /></p>
+<h2 id="定位初始入侵位置"><a href="#定位初始入侵位置" class="headerlink" title="定位初始入侵位置"></a>定位初始入侵位置</h2><p><br />首先要确认入侵是否发生在容器内，或者说只在容器内<br />​</p>
+<p>场景：zabbix告警一个进程占用非常高，像是挖矿程序&#x2F;DOS了<br />​</p>
+<p>但是查看进程的PPID却发现是systemd，这种情况大概率是容器相关了<br />​</p>
+<p>首先获取程序PID，然后查看对应进程的进程树是否父进程为containerd-shim<br />​</p>
+<p><img src="https://iximiuz.com/implementing-container-runtime-shim/docker-containerd-runc-2000-opt.png"></p>
+<p>上图比较清晰的介绍了各项之间的逻辑关系，不同docker版本有些区别，具体视情况决定。<br />​</p>
+<p>以docker为例，可以通过如下方式确认宿主机内的docker进程及对应的容器名</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">for i in $(docker container ls --format &quot;&#123;&#123;.ID&#125;&#125;&quot;); do docker inspect -f &#x27;&#123;&#123;.State.Pid&#125;&#125; &#123;&#123;.Name&#125;&#125;&#x27; $i; done</span><br></pre></td></tr></table></figure>
+<p>需要提醒的是，在生产环境可能有些输出进程号为0，这种不是真的PID为0，是此刻容器处于restarting状态。&lt;br<br><a name="Gqbgo"></a></p>
+<h2 id="了解环境基本信息"><a href="#了解环境基本信息" class="headerlink" title="了解环境基本信息"></a>了解环境基本信息</h2><p>定位到对应的容器后，需要检查该容器的一些基本信息<br /><br><br />检查容器对外开放端口，是否有根据经验即可判断的风险</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker ps <span class="comment">#当前运行的容器、创建时间、运行状态、映射的端口</span></span><br></pre></td></tr></table></figure>
+<p>检查宿主机docker环境，比如是否docker deamon api对外开放，还是有很多运维因为种种原因可能做出这类配置的。<br /><br><br />常见的容器逃逸checklist：<br />​<br /></p>
+<ul>
+<li>是否挂载了敏感目录</li>
+<li>是否是特权容器</li>
+<li>宿主机内核版本是否在常见的逃逸漏洞影响范围</li>
+<li>…</li>
+</ul>
+<p>​</p>
+<p>最后检查对应镜像的运行命令，不过多数都是docker-entrypoint.sh，最好有容器管理员侧的配合<br />​</p>
+<p>再次确认容器在宿主机的PID</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker inspect -f &#x27;&#123;&#123;.State.Pid&#125;&#125;&#x27; &lt;容器ID&gt;</span><br></pre></td></tr></table></figure>
+<p>最后是确定当前节点使用的镜像仓库，如果使用公网仓库则需要排查是否存在被恶意拉取可能性，关于这点将在后面章节继续。<br><a name="F7X6e"></a></p>
+<h1 id="容器分析"><a href="#容器分析" class="headerlink" title="容器分析"></a>容器分析</h1><p><a name="sycko"></a></p>
+<h2 id="保存容器现场"><a href="#保存容器现场" class="headerlink" title="保存容器现场"></a>保存容器现场</h2><p>如果需要进行取证就应该先暂停处置等工作，第一步是确保现场的完整性。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker commmit &lt;容器ID&gt;</span><br><span class="line">docker checkpoint #需要开启实验性功能</span><br></pre></td></tr></table></figure>
+<p>因为一般跑容器的宿主机都是大内存机器，所以保存机器内存快照其实并不怎么方便。<br />​</p>
+<p>场景：这里以redis容器空口令导致redis被写入私钥为例<br />环境搭建：使用vulhub环境模拟<br />​</p>
+<p>使用redis-cli连接空口令的redis，并在tmp目录写入名为hack的文件<br /></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">config set dir /tmp</span><br><span class="line">set shell hacked</span><br><span class="line">config set dbfilename hack</span><br><span class="line">save</span><br><span class="line">exit</span><br></pre></td></tr></table></figure>
+<p><a name="Qswui"></a></p>
+<h2 id="容器的变更"><a href="#容器的变更" class="headerlink" title="容器的变更"></a>容器的变更</h2><p>​</p>
+<p>入侵者在入侵容器后，做了什么变更，这个是比较关键的信息<br />​<br /></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker diff &lt;容器ID&gt;</span><br></pre></td></tr></table></figure>
+
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">C /tmp</span><br><span class="line">A /tmp/hack</span><br></pre></td></tr></table></figure>
+<p>类型解释如下<br />​<br /></p>
+<table>
+<thead>
+<tr>
+<th>A</th>
+<th>添加了文件或目录</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>D</td>
+<td>文件或目录被删除</td>
+</tr>
+<tr>
+<td>C</td>
+<td>文件或目录已更改</td>
+</tr>
+</tbody></table>
+<p><br />查看文件时间（常见的容器基础镜像都不带ll命令）</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$ </span><span class="language-bash">docker <span class="built_in">exec</span> -i &lt;容器ID&gt; <span class="built_in">ls</span> /tmp -al</span></span><br><span class="line">total 8</span><br><span class="line">drwxrwxrwt 1 root  root   31 Mar  6 02:46 .</span><br><span class="line">drwxr-xr-x 1 root  root   17 Mar  6 02:24 ..</span><br><span class="line">-rw-r--r-- 1 redis redis 112 Mar  6 02:24 hack</span><br></pre></td></tr></table></figure>
+<p>​</p>
+<p>不过生产环境噪音肯定非常大，需要一定安全知识、其他信息进行过滤<br /></p>
+<p><a name="k32N0"></a></p>
+<h2 id="深入容器基本信息"><a href="#深入容器基本信息" class="headerlink" title="深入容器基本信息"></a>深入容器基本信息</h2><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">docker info #docker引擎的相关信息</span><br><span class="line">docker inspect -f  &lt;container id&gt; </span><br><span class="line">docker inspect --format=&quot;&#123;&#123;json .Mounts&#125;&#125;&quot; &lt;容器ID&gt; | jq #目录在宿主机的具体挂载位置</span><br><span class="line">docker inspect --format=&quot;&#123;&#123;json .NetworkSettings&#125;&#125;&quot; &lt;容器ID&gt; | jq #查看网络信息</span><br><span class="line">docker inspect 80d15c023c6d | grep com.docker.compose #查看docker-compose路径、镜像、</span><br></pre></td></tr></table></figure>
+
+<br />
+<a name="OipP7"></a>
+## 容器日志分析
+docker logs 所收集的日志是只包含标准输出（STDOUT）与标准错误输出（STDERR），所以粒度可能是不够的。而且容器一旦重启，docker log便会丢失。<br />​
+
+<p>许多知名项目在移植到docker时，也考虑到了这点，以nginx的Dockerfile为例，就是直接将access.log和error.log 软链接到stdout和stderr。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ln -sf /dev/stdout /var/log/nginx/access.log</span><br><span class="line">ln -sf /dev/stderr /var/log/nginx/error.log </span><br></pre></td></tr></table></figure>
+<p><br />​</p>
+<p>2017年，Matt Stine在接受InfoQ采访时将Observability(可观测性)归纳为云原生的特征。在目前的CNCF中，可观测性体系的产品主要分为Monitoring监控、Logging日志 、Tracing调用链。<br />因此如果有外部日志服务器，那么直接到日志服务器进行检索即可，可能有更多的数据源、更专业的检索工具，可以更好的分析安全事件。本文主要讨论关于没有持久化日志的情况<br />​</p>
+<p>继续分析上面的场景</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker logs &lt;容器ID&gt;</span><br></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">1:C 06 Mar 02:24:04.043 # oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo</span><br><span class="line">1:C 06 Mar 02:24:04.043 # Redis version=4.0.14, bits=64, commit=00000000, modified=0, pid=1, just started</span><br><span class="line">1:C 06 Mar 02:24:04.043 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf</span><br><span class="line">1:M 06 Mar 02:24:04.044 * Running mode=standalone, port=6379.</span><br><span class="line">1:M 06 Mar 02:24:04.044 # WARNING: The TCP backlog setting of 511 cannot be enforced because /proc/sys/net/core/somaxconn is set to the lower value of 128.</span><br><span class="line">1:M 06 Mar 02:24:04.044 # Server initialized</span><br><span class="line">1:M 06 Mar 02:24:04.044 # WARNING overcommit_memory is set to 0! Background save may fail under low memory condition. To fix this issue add &#x27;vm.overcommit_memory = 1&#x27; to /etc/sysctl.conf and then reboot or run the command &#x27;sysctl vm.overcommit_memory=1&#x27; for this to take effect.</span><br><span class="line">1:M 06 Mar 02:24:04.044 # WARNING you have Transparent Huge Pages (THP) support enabled in your kernel. This will create latency and memory usage issueswith Redis. To fix this issue run the command &#x27;echo never &gt; /sys/kernel/mm/transparent_hugepage/enabled&#x27; as root, and add it to your /etc/rc.local in order to retain the setting after a reboot. Redis must be restarted after THP is disabled.</span><br><span class="line">1:M 06 Mar 02:24:04.044 * Ready to accept connections</span><br><span class="line">1:M 06 Mar 02:24:33.332 * DB saved on disk</span><br></pre></td></tr></table></figure>
+
+<p><br />可以看到在06 Mar 02:24:33保存了一个DB<br />​</p>
+<p>结合容器变更信息中，tmp目录下的文件时间，可以判断出该容器是在06 Mar 02:24被入侵，但是这个时间不完全对，因为容器的时区没有设置，date命令可以看到使用的是UTC时区</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="language-bash">docker <span class="built_in">exec</span> -i &lt;容器ID&gt; <span class="built_in">date</span></span></span><br><span class="line">Sun Mar  6 02:30:08 UTC 2022</span><br></pre></td></tr></table></figure>
+<p>因为容器启动时未配置时区，默认会使用UTC。<br />因为是UTC时区，所以就需要将时间+8小时即Mar  6 10:30:08<br><a name="nuDBk"></a></p>
+<h2 id="其他安全设备日志"><a href="#其他安全设备日志" class="headerlink" title="其他安全设备日志"></a>其他安全设备日志</h2><p>这点不多谈，容器技术在设计时考虑了很多安全性，但是基础的安全建设、设备还是需要的。<br />需要注意的是厂商有无容器安全案例？对于K8S等环境，POD、Node间<strong>东西向的流量</strong>是否能收集？<br><a name="NXpl7"></a></p>
+<h1 id="镜像分析"><a href="#镜像分析" class="headerlink" title="镜像分析"></a>镜像分析</h1><p>假如容器是因为被投毒，所以造成的失陷，可以通过以下方式排查。当然，如果发生了项目文件泄露也可以分析镜像排查，比如是否有.git等。<br />​</p>
+<p>首选确定是否使用了docker-compose构建？如果使用，docker-compose.yml文件内容是哪些？<br />直接使用docker inspect ，就可以看到docker-compose的路径</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="language-bash">docker inspect &lt;容器ID&gt; | grep com.docker.compose</span></span><br></pre></td></tr></table></figure>
+
+
+<p><a name="gpeV3"></a></p>
+<h2 id="镜像仓库"><a href="#镜像仓库" class="headerlink" title="镜像仓库"></a>镜像仓库</h2><p>首先确定容器使用的镜像:是否使用了镜像仓库，除了直接问机器管理员还可以自己摸索（这点在攻击者角度也是一样的），直接通过docker info 命令查看即可。 <br />​</p>
+<p>不过，同样需要关注的是镜像仓库的凭据。和其他Linux软件一样，secret一般都在用户的环境变量，如$HOME&#x2F;.docker&#x2F;config.json，甚至openshift都可以通过该文件创建secret（也可以自定义的，参数是–config，且优先级更高）</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="language-bash">oc create secret generic dockerhub \</span></span><br><span class="line"><span class="language-bash">    --from-file=.dockerconfigjson=&lt;path/to/.docker/config.json&gt; \</span></span><br><span class="line"><span class="language-bash">    --<span class="built_in">type</span>=kubernetes.io/dockerconfigjson</span></span><br></pre></td></tr></table></figure>
+<p>回归主线，查看以下json文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="language-bash"><span class="built_in">cat</span> /root/.docker/config.json</span></span><br></pre></td></tr></table></figure>
+<p>192.168.xxxx.xxx:8888即是仓库对应的IP:Port</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">        &quot;auths&quot;: &#123;</span><br><span class="line">                &quot;192.168.xxxx.xxx:8888&quot;: &#123;</span><br><span class="line">                        &quot;auth&quot;: &quot;YWRtaW46SGFyYm9yMTIzNDU=&quot;</span><br><span class="line">                &#125;</span><br><span class="line">        &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里auth的value就是用户名:密码，可以直接base64解码</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="language-bash"><span class="built_in">echo</span> <span class="string">&quot;YWRtaW46SGFyYm9yMTIzNDU=&quot;</span> | base64 -d</span></span><br><span class="line">admin:Harbor12345</span><br></pre></td></tr></table></figure>
+<p>除了其他机器失陷，导致镜像仓库凭据泄露，进而导致镜像被恶意拉取。当然也可能是harbor项目配置不当，比如配置成了public项目、registry错误配置或利用了harbor漏洞…<br><a name="xp4qW"></a></p>
+<h2 id="镜像扫描"><a href="#镜像扫描" class="headerlink" title="镜像扫描"></a>镜像扫描</h2><p><br />新版本的docker已经和synk合作提供镜像扫描服务，当然也可以使用一些开源的镜像扫描工具比如<br />Trivy、Clair，或者是镜像仓库扫描器，比如新版本harbor就是默认集成了，其他的商业容器安全平台一般也有Adapter集成harbor用于扫描。<br />​</p>
+<p>在扫描过程中可以发现一些应用漏洞（需要排除大量误报）+配置错误<br><a name="hcoCR"></a></p>
+<h2 id="镜像分析-1"><a href="#镜像分析-1" class="headerlink" title="镜像分析"></a>镜像分析</h2><p>在确保基础镜像的安全性后，分析镜像主要有两点：提取出镜像的构建过程和镜像构建过程中引用的文件<br /><br><br />场景模拟：dockerhub上的一个挖矿镜像</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker pull hsww/xmrig-centos7:v6.12.2</span><br></pre></td></tr></table></figure>
+
+
+<p><a name="ZlP3o"></a></p>
+<h3 id="镜像的构建过程"><a href="#镜像的构建过程" class="headerlink" title="镜像的构建过程"></a>镜像的构建过程</h3><p>使用docker history</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker history --no-trunc hsww/xmrig-centos7:v6.12.2</span><br></pre></td></tr></table></figure>
+<p>效果如下，其实有点难理解，但是优点是有时间等信息</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">IMAGE                                                                     CREATED         CREATED BY                           SIZE      COMMENT</span><br><span class="line">sha256:3960a79adeabfa493f9fb8e183808d291d48f01ed56218f8d3364518d2cd302a   9 months ago    /bin/sh -c #(nop)  ENTRYPOINT [&quot;/usr/bin/xmrig&quot;]                           0B</span><br><span class="line">&lt;missing&gt;                                                                 9 months ago    /bin/sh -c #(nop) COPY file:e08e85a10f13e9a15bcb7001e743118149b28e66ca238058a9010b9baf26a6b7 in /usr/bin                           7.69MB</span><br><span class="line">&lt;missing&gt;                                                                 15 months ago   /bin/sh -c #(nop)  CMD [&quot;/bin/bash&quot;]                           0B</span><br><span class="line">&lt;missing&gt;                                                                 15 months ago   /bin/sh -c #(nop)  LABEL org.label-schema.schema-version=1.0 org.label-schema.name=CentOS Base Image org.label-schema.vendor=CentOS org.label-schema.license=GPLv2 org.label-schema.build-date=20201113 org.opencontainers.image.title=CentOS Base Image org.opencontainers.image.vendor=CentOS org.opencontainers.image.licenses=GPL-2.0-only org.opencontainers.image.created=2020-11-13 00:00:00+00:00   0B</span><br><span class="line">&lt;missing&gt;                                                                 15 months ago   /bin/sh -c #(nop) ADD file:b3ebbe8bd304723d43b7b44a6d990cd657b63d93d6a2a9293983a30bfc1dfa53 in /                           204MB</span><br></pre></td></tr></table></figure>
+<p>​</p>
+<p>​</p>
+<p>使用dfimage工具</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">alias dfimage=&quot;docker run -v /var/run/docker.sock:/var/run/docker.sock --rm alpine/dfimage&quot;</span><br><span class="line">dfimage -sV=1.36 hsww/xmrig-centos7:v6.12.2</span><br></pre></td></tr></table></figure>
+<p>提取出的信息如下<br />​<br /></p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">LABEL</span><span class="language-bash"> org.label-schema.schema-version=1.0 org.label-schema.name=CentOS Base Image org.label-schema.vendor=CentOS org.label-schema.license=GPLv2 org.label-schema.build-date=20201113 org.opencontainers.image.title=CentOS Base Image org.opencontainers.image.vendor=CentOS org.opencontainers.image.licenses=GPL-2.0-only org.opencontainers.image.created=2020-11-13 00:00:00+00:00</span></span><br><span class="line"><span class="keyword">CMD</span><span class="language-bash"> [<span class="string">&quot;/bin/bash&quot;</span>]</span></span><br><span class="line"><span class="keyword">COPY</span><span class="language-bash"> file:e08e85a10f13e9a15bcb7001e743118149b28e66ca238058a9010b9baf26a6b7 <span class="keyword">in</span> /usr/bin</span></span><br><span class="line">	usr/</span><br><span class="line">	usr/bin/</span><br><span class="line">	usr/bin/xmrig</span><br><span class="line"></span><br><span class="line"><span class="keyword">ENTRYPOINT</span><span class="language-bash"> [<span class="string">&quot;/usr/bin/xmrig&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+<p>​</p>
+<p>然后把&#x2F;usr&#x2F;bin&#x2F;xmrig文件复制出来分析即可</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">/usr/bin/xmrig</span><br><span class="line">docker inspect  hsww/xmrig-centos7:v6.12.2 #查看UpperDir目录，直接复制其中内容即可</span><br><span class="line">docker inspect --format=&#x27;&#123;&#123;.GraphDriver.Data.UpperDir&#125;&#125;&#x27; hsww/xmrig-centos7:v6.12.2</span><br></pre></td></tr></table></figure>
+<p>因为我这里使用的是默认的overlay2驱动，可以通过docker info查看当前使用的docker 存储驱动。<br /><br />最下层是lower层,是只读&#x2F;镜像层<br />upper是容器的读写层,采用了CoW(写时复制)机制,只有对文件进行修改才会将文件拷贝到upper层,之后所有的修改操作都会对upper层的副本进行修改<br />upper并列还有workdir层,它的作用是充当一个中间层的作用,每当对upper层里面的副本进行修改时,会先当到workdir,然后再从workdir移动upper层<br />最上层是mergedir,是一个统一图层,从mergedir可以看到lower,upper,workdir中所有数据的整合,整个容器展现出来的就是mergedir层.<br /></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">$</span><span class="language-bash">tree -l</span></span><br><span class="line">.</span><br><span class="line">└── usr</span><br><span class="line">    └── bin</span><br><span class="line">        └── xmrig</span><br></pre></td></tr></table></figure>
+
+
+<p><a name="stT6w"></a></p>
+<h3 id="构建引用的文件"><a href="#构建引用的文件" class="headerlink" title="构建引用的文件"></a>构建引用的文件</h3><p><br />这里使用dockerhub上的docker72590&#x2F;apache:latest进行分析</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dfimage -sV=1.36 docker72590/apache:latest</span><br></pre></td></tr></table></figure>
+<p>解析出的Dockerfile文件为</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">CMD</span><span class="language-bash"> [<span class="string">&quot;/bin/sh&quot;</span>]</span></span><br><span class="line">/bin/sh</span><br><span class="line"><span class="keyword">WORKDIR</span><span class="language-bash"> /home</span></span><br><span class="line"><span class="keyword">CMD</span><span class="language-bash"> [<span class="string">&quot;sh&quot;</span> <span class="string">&quot;-c&quot;</span> <span class="string">&quot;./.system  \</span></span></span><br><span class="line"><span class="string"><span class="language-bash">	&amp;&amp; tail -f /dev/null&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+<p>可以看到其中的关键是&#x2F;home&#x2F;.system文件</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker inspect --format=<span class="string">&#x27;&#123;&#123;.GraphDriver.Data.UpperDir&#125;&#125;&#x27;</span> docker72590/apache:latest</span><br></pre></td></tr></table></figure>
+<p>但是目录下没有，可能在基础镜像时已经包含了这个内容，所以得看LowerDir</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">$docker inspect --format=<span class="string">&#x27;&#123;&#123;.GraphDriver.Data.LowerDir&#125;&#125;&#x27;</span> docker72590/apache:latest</span><br><span class="line">/var/lib/docker/overlay2/<span class="number">53199</span>a18fdaeaf2f273be827ac59f5f1ed674b3fe53605bbcc62c8eaf784c2f9/diff:/var/lib/docker/overlay2/<span class="number">79107</span>e83796cd78d7477d8e0dec22dc363eb56e966d7a49e64858bf5937227e5/diff</span><br><span class="line">cd /var/lib/docker/overlay2/<span class="number">53199</span>a18fdaeaf2f273be827ac59f5f1ed674b3fe53605bbcc62c8eaf784c2f9/diff</span><br><span class="line">$tree -a</span><br><span class="line">.</span><br><span class="line">├── bin</span><br><span class="line">│   ├── apache2</span><br><span class="line">│   ├── httpd</span><br><span class="line">│   └── httpd-crypto</span><br><span class="line">├── home</span><br><span class="line">│   └── .system</span><br><span class="line">├── usr</span><br><span class="line">│   └── share</span><br><span class="line">│       └── .apache</span><br><span class="line">│           └── ...</span><br><span class="line">│               ├── apache4</span><br><span class="line">│               ├── .dat</span><br><span class="line">│               ├── httpd</span><br><span class="line">│               ├── .httpd5.pid</span><br><span class="line">│               └── .httpd6.pid</span><br><span class="line">└── var</span><br><span class="line">    └── tmp</span><br><span class="line">        ├── .apache</span><br><span class="line">        │   └── ...</span><br><span class="line">        │       └── httpd</span><br><span class="line">        └── .crypto</span><br><span class="line">            └── ...</span><br><span class="line">                ├── .ddns</span><br><span class="line">                ├── .ddns.pid</span><br><span class="line">                ├── httpd-crypto</span><br><span class="line">                └── .stop.sh</span><br></pre></td></tr></table></figure>
+<p>​</p>
+<p>所以在这里无法显示，也可以通过dive查看镜像构建过程引用的文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">docker pull wagoodman/dive #拉取dive镜像</span><br><span class="line">docker run --rm -it \</span><br><span class="line">    -v /var/run/docker.sock:/var/run/docker.sock \</span><br><span class="line">    wagoodman/dive:latest  docker72590/apache:latest</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://s2.loli.net/2022/03/07/6wHCOmbqJMWDSg5.png" alt="使用dive取证docker镜像.png"></p>
+<p><br />注意这里的层ID<br />​</p>
+<p>提取镜像</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker save docker72590/apache:latest -o apache.bin</span><br></pre></td></tr></table></figure>
+<p>使用binwalk进行提取，其实也可以直接解压，这里我直接解压</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker save docker72590/apache:latest -o apache.tar</span><br><span class="line">mkdir apache/</span><br><span class="line">tar xvf  apache.tar -C apache/</span><br></pre></td></tr></table></figure>
+<p>根据dive的信息，直接看对应的一层，找到.system，有个经验技巧就是镜像第一层会在最上面</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ls a40defa7c3de20011509b2acfc6d12137efcf033df032bc34c67f04582c88a53/home -alh</span><br><span class="line">total <span class="number">4.0</span>K</span><br><span class="line">drwxr-xr-x. <span class="number">2</span> root root  <span class="number">21</span> Dec  <span class="number">6</span> <span class="number">16</span>:<span class="number">57</span> .</span><br><span class="line">drwxr-xr-x. <span class="number">6</span> root root  <span class="number">95</span> Mar  <span class="number">6</span> <span class="number">03</span>:<span class="number">22</span> ..</span><br><span class="line">-rwxr-xr-x. <span class="number">1</span> <span class="number">1000</span> <span class="number">1000</span> <span class="number">466</span> Nov <span class="number">23</span> <span class="number">11</span>:<span class="number">33</span> .system</span><br></pre></td></tr></table></figure>
+
+<p><br />因为启动方式是sh启动，所以可以查看文件内容</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="language-bash">/bin/bash</span></span><br><span class="line">export LC_ALL=C.UTF-8</span><br><span class="line">export LANG=C.UTF-8 </span><br><span class="line">export DOCKER_API_VERSION=1.24</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">ping -c 3 -w 5 google.com 2&gt;/dev/null 1&gt;/dev/null</span><br><span class="line">if [ $? != 0 ];then</span><br><span class="line">    sed -i &#x27;s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g&#x27; /etc/apk/repositories  </span><br><span class="line">fi </span><br><span class="line">mkdir -p /var/tmp/.apache/...</span><br><span class="line"></span><br><span class="line">apk update</span><br><span class="line">apk add redis docker jq libpcap-dev openrc curl --no-cache</span><br><span class="line"></span><br><span class="line">cd /var/tmp/.crypto/...</span><br><span class="line">./httpd-crypto</span><br><span class="line"></span><br><span class="line">cd /var/tmp/.apache/...</span><br><span class="line">./httpd</span><br><span class="line"></span><br><span class="line">cd /usr/share/.apache/...</span><br><span class="line">sleep 60</span><br><span class="line">./httpd</span><br></pre></td></tr></table></figure>
+<p>这里就不继续分析了<br /></p>
+<p><a name="P1Cub"></a></p>
+<h1 id="处置手段"><a href="#处置手段" class="headerlink" title="处置手段"></a>处置手段</h1><p>处置第一步应该是下线相关应用&#x2F;修复应用风险，而不是这些措施，不过有时候有用。<br />​</p>
+<p>比如K8S的Cluster Autoscaler和Horizontal Pod Autoscaler等功能，假如频繁性的在一个node上阻断操作，master可能判定该node异常，因此将pod调度到其他节点，这种情况甚至可能对于攻击者毫无感知，同样的exp打过来效果可能都是一样的。<br />​</p>
+<p>但是对于防御者来说，大大增加了处置成本，即不停的在不同node进行处置，而且需要K8S管理员频繁配合，确定POD调度的node。<br />​</p>
+<p>下面提到的方式主要是短时止血的思路，需要结合应用部署实施的实际情况决定。<br /><br><br />暂停容器<br />​<br /></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker pause &lt;容器ID&gt; </span><br><span class="line">docker unpause &lt;容器ID&gt; #取消暂停容器</span><br></pre></td></tr></table></figure>
+<p>​</p>
+<p>删除容器，除非迫不得已<br />​<br /></p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker rm -f &lt;容器ID&gt;</span><br></pre></td></tr></table></figure>
+<p><a name="VZtwM"></a></p>
+<h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p><img src="https://s2.loli.net/2022/03/07/OH5ciXpFJPBuSR9.png" alt="容器安全事件排查思维导图.png"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">Alex-null</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2022/03/07/%E5%AE%B9%E5%99%A8%E5%AE%89%E5%85%A8%E4%BA%8B%E4%BB%B6%E6%8E%92%E6%9F%A5%E4%B8%8E%E5%93%8D%E5%BA%94/">http://example.com/2022/03/07/%E5%AE%B9%E5%99%A8%E5%AE%89%E5%85%A8%E4%BA%8B%E4%BB%B6%E6%8E%92%E6%9F%A5%E4%B8%8E%E5%93%8D%E5%BA%94/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">Alex-null's Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"></div><div class="post_share"><div class="social-share" data-image="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="https://i.loli.net/2021/02/24/5O1day2nriDzjSu.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Alex-null</div><div class="author-info__description"></div></div><div class="card-info-data is-center"><div class="card-info-data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">1</div></a></div><div class="card-info-data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a></div><div class="card-info-data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A3%B0%E6%98%8E%E2%80%8B"><span class="toc-number">1.</span> <span class="toc-text">声明​</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%BC%95%E5%AD%90"><span class="toc-number">2.</span> <span class="toc-text">引子</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9A%E4%BD%8D%E5%88%9D%E5%A7%8B%E5%85%A5%E4%BE%B5%E4%BD%8D%E7%BD%AE"><span class="toc-number">2.1.</span> <span class="toc-text">定位初始入侵位置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%86%E8%A7%A3%E7%8E%AF%E5%A2%83%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF"><span class="toc-number">2.2.</span> <span class="toc-text">了解环境基本信息</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%AE%B9%E5%99%A8%E5%88%86%E6%9E%90"><span class="toc-number">3.</span> <span class="toc-text">容器分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BF%9D%E5%AD%98%E5%AE%B9%E5%99%A8%E7%8E%B0%E5%9C%BA"><span class="toc-number">3.1.</span> <span class="toc-text">保存容器现场</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%B9%E5%99%A8%E7%9A%84%E5%8F%98%E6%9B%B4"><span class="toc-number">3.2.</span> <span class="toc-text">容器的变更</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5%E5%AE%B9%E5%99%A8%E5%9F%BA%E6%9C%AC%E4%BF%A1%E6%81%AF"><span class="toc-number">3.3.</span> <span class="toc-text">深入容器基本信息</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%B6%E4%BB%96%E5%AE%89%E5%85%A8%E8%AE%BE%E5%A4%87%E6%97%A5%E5%BF%97"><span class="toc-number">3.4.</span> <span class="toc-text">其他安全设备日志</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90"><span class="toc-number">4.</span> <span class="toc-text">镜像分析</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93"><span class="toc-number">4.1.</span> <span class="toc-text">镜像仓库</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%95%9C%E5%83%8F%E6%89%AB%E6%8F%8F"><span class="toc-number">4.2.</span> <span class="toc-text">镜像扫描</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%95%9C%E5%83%8F%E5%88%86%E6%9E%90-1"><span class="toc-number">4.3.</span> <span class="toc-text">镜像分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%95%9C%E5%83%8F%E7%9A%84%E6%9E%84%E5%BB%BA%E8%BF%87%E7%A8%8B"><span class="toc-number">4.3.1.</span> <span class="toc-text">镜像的构建过程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9E%84%E5%BB%BA%E5%BC%95%E7%94%A8%E7%9A%84%E6%96%87%E4%BB%B6"><span class="toc-number">4.3.2.</span> <span class="toc-text">构建引用的文件</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%A4%84%E7%BD%AE%E6%89%8B%E6%AE%B5"><span class="toc-number">5.</span> <span class="toc-text">处置手段</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%B0%8F%E7%BB%93"><span class="toc-number">6.</span> <span class="toc-text">小结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2022/03/07/%E5%AE%B9%E5%99%A8%E5%AE%89%E5%85%A8%E4%BA%8B%E4%BB%B6%E6%8E%92%E6%9F%A5%E4%B8%8E%E5%93%8D%E5%BA%94/" title="容器安全事件排查与响应"><img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="容器安全事件排查与响应"/></a><div class="content"><a class="title" href="/2022/03/07/%E5%AE%B9%E5%99%A8%E5%AE%89%E5%85%A8%E4%BA%8B%E4%BB%B6%E6%8E%92%E6%9F%A5%E4%B8%8E%E5%93%8D%E5%BA%94/" title="容器安全事件排查与响应">容器安全事件排查与响应</a><time datetime="2022-03-07T08:18:48.000Z" title="发表于 2022-03-07 16:18:48">2022-03-07</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2022 By Alex-null</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.umd.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
